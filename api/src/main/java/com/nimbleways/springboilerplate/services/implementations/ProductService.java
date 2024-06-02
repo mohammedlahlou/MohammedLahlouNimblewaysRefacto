@@ -1,49 +1,102 @@
 package com.nimbleways.springboilerplate.services.implementations;
 
-import java.time.LocalDate;
-
+import com.nimbleways.springboilerplate.dto.product.ProcessOrderResponse;
+import com.nimbleways.springboilerplate.entities.Order;
+import com.nimbleways.springboilerplate.entities.Product;
+import com.nimbleways.springboilerplate.exceptions.OrderNotFoundException;
+import com.nimbleways.springboilerplate.repositories.OrderRepository;
+import com.nimbleways.springboilerplate.repositories.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.nimbleways.springboilerplate.entities.Product;
-import com.nimbleways.springboilerplate.repositories.ProductRepository;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.Set;
 
 @Service
 public class ProductService {
 
     @Autowired
-    ProductRepository pr;
+    ProductRepository productRepository;
 
     @Autowired
-    NotificationService ns;
+    NotificationService notificationService;
+    @Autowired
+    OrderRepository orderRepository;
 
-    public void notifyDelay(int leadTime, Product p) {
-        p.setLeadTime(leadTime);
-        pr.save(p);
-        ns.sendDelayNotification(leadTime, p.getName());
+    @Autowired
+    private Clock clock;
+
+
+    private void decreaseProductAvailability(Product product) {
+        product.setAvailable(product.getAvailable() - 1);
+        productRepository.save(product);
     }
 
-    public void handleSeasonalProduct(Product p) {
-        if (LocalDate.now().plusDays(p.getLeadTime()).isAfter(p.getSeasonEndDate())) {
-            ns.sendOutOfStockNotification(p.getName());
-            p.setAvailable(0);
-            pr.save(p);
-        } else if (p.getSeasonStartDate().isAfter(LocalDate.now())) {
-            ns.sendOutOfStockNotification(p.getName());
-            pr.save(p);
+    public void handleNormalProduct(Product product) {
+        if (product.getAvailable() > 0) {
+            decreaseProductAvailability(product);
         } else {
-            notifyDelay(p.getLeadTime(), p);
+            int leadTime = product.getLeadTime();
+            if (leadTime > 0) {
+                notificationService.sendDelayNotification(leadTime, product.getName());
+            }
         }
     }
 
-    public void handleExpiredProduct(Product p) {
-        if (p.getAvailable() > 0 && p.getExpiryDate().isAfter(LocalDate.now())) {
-            p.setAvailable(p.getAvailable() - 1);
-            pr.save(p);
+    private void handleSeasonalProduct(Product product) {
+        LocalDate now = LocalDate.now(clock);
+        if ((!now.isBefore(product.getStartDate()) && !now.isAfter(product.getEndDate()) && product.getAvailable() > 0)) {
+            decreaseProductAvailability(product);
         } else {
-            ns.sendExpirationNotification(p.getName(), p.getExpiryDate());
-            p.setAvailable(0);
-            pr.save(p);
+            if (!LocalDate.now(clock).plusDays(product.getLeadTime()).isBefore(product.getEndDate())) {
+                notificationService.sendOutOfStockNotification(product.getName());
+                product.setAvailable(0);
+                productRepository.save(product);
+            } else if (!product.getStartDate().isBefore(LocalDate.now(clock))) {
+                notificationService.sendOutOfStockNotification(product.getName());
+                productRepository.save(product);
+            } else {
+                notificationService.sendDelayNotification(product.getLeadTime(), product.getName());
+            }
         }
+    }
+
+    private void handleExpirableProduct(Product product) {
+        LocalDate now = LocalDate.now(clock);
+        if (product.getAvailable() > 0 && !product.getEndDate().isBefore(now)) {
+            decreaseProductAvailability(product);
+        } else {
+            notificationService.sendExpirationNotification(product.getName(), product.getEndDate());
+            product.setAvailable(0);
+            productRepository.save(product);
+        }
+    }
+
+    private void handleFlashSaleProduct(Product product) {
+        LocalDate now = LocalDate.now(clock);
+        if ((!now.isBefore(product.getStartDate()) && !now.isAfter(product.getEndDate()) && product.getAvailable() > 0)) {
+            decreaseProductAvailability(product);
+        } else {
+            notificationService.sendOutOfStockNotification(product.getName());
+        }
+    }
+
+    public ProcessOrderResponse processOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+
+        if (order == null){
+            throw new OrderNotFoundException("Order not found with id: " + orderId);
+        }
+        Set<Product> products = order.getItems();
+        for (Product product : products) {
+            switch (product.getType()) {
+                case NORMAL -> handleNormalProduct(product);
+                case SEASONAL -> handleSeasonalProduct(product);
+                case EXPIRABLE -> handleExpirableProduct(product);
+                case FLASHSALE -> handleFlashSaleProduct(product);
+            }
+        }
+        return new ProcessOrderResponse(order.getId());
     }
 }

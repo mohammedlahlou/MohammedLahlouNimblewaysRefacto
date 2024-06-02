@@ -24,18 +24,16 @@ public class Product {
     @Column(name = "available")
     private Integer available;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type")
-    private String type;
+    private ProductType type;
 
     @Column(name = "name")
     private String name;
 
-    @Column(name = "expiry_date")
-    private LocalDate expiryDate;
+    @Column(name = "start_date")
+    private LocalDate startDate;
 
-    @Column(name = "season_start_date")
-    private LocalDate seasonStartDate;
-
-    @Column(name = "season_end_date")
-    private LocalDate seasonEndDate;
+    @Column(name = "end_date")
+    private LocalDate endDate;
 }

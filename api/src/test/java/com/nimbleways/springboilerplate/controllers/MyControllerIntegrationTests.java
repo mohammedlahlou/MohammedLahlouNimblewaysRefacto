@@ -13,18 +13,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.Assert.assertEquals;
-
-// import com.fasterxml.jackson.databind.ObjectMapper;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static com.nimbleways.springboilerplate.entities.ProductType.*;
+import static org.junit.Assert.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // Specify the controller class you want to test
 // This indicates to spring boot to only load UsersController into the context
@@ -54,7 +52,7 @@ public class MyControllerIntegrationTests {
                 order = orderRepository.save(order);
                 mockMvc.perform(post("/orders/{orderId}/processOrder", order.getId())
                                 .contentType("application/json"))
-                                .andExpect(status().isOk());
+                        .andExpect(status().isOk());
                 Order resultOrder = orderRepository.findById(order.getId()).get();
                 assertEquals(resultOrder.getId(), order.getId());
         }
@@ -66,16 +64,21 @@ public class MyControllerIntegrationTests {
         }
 
         private static List<Product> createProducts() {
+
+                // I was focused more on refactoring, than the integration tests
                 List<Product> products = new ArrayList<>();
-                products.add(new Product(null, 15, 30, "NORMAL", "USB Cable", null, null, null));
-                products.add(new Product(null, 10, 0, "NORMAL", "USB Dongle", null, null, null));
-                products.add(new Product(null, 15, 30, "EXPIRABLE", "Butter", LocalDate.now().plusDays(26), null,
-                                null));
-                products.add(new Product(null, 90, 6, "EXPIRABLE", "Milk", LocalDate.now().minusDays(2), null, null));
-                products.add(new Product(null, 15, 30, "SEASONAL", "Watermelon", null, LocalDate.now().minusDays(2),
-                                LocalDate.now().plusDays(58)));
-                products.add(new Product(null, 15, 30, "SEASONAL", "Grapes", null, LocalDate.now().plusDays(180),
-                                LocalDate.now().plusDays(240)));
+                products.add(new Product(null, 15, 30, NORMAL, "sugar", null, null));
+                products.add(new Product(null, 10, 0, NORMAL, "sugar2", null, null));
+                products.add(new Product(null, 15, 30, EXPIRABLE, "sugar3", null, LocalDate.now().plusDays(26)));
+                products.add(new Product(null, 90, 6, EXPIRABLE, "sugar4", null, LocalDate.now().minusDays(2)));
+                products.add(new Product(null, 15, 30, SEASONAL, "sugar5", LocalDate.now().minusDays(2),
+                        LocalDate.now().plusDays(58)));
+                products.add(new Product(null, 15, 30, SEASONAL, "sugar6", LocalDate.now().plusDays(180),
+                        LocalDate.now().plusDays(240)));
+                products.add(new Product(null, 15, 30, FLASHSALE, "sugar7", LocalDate.now().plusDays(180),
+                        LocalDate.now().plusDays(240)));
+                products.add(new Product(null, 15, 30, FLASHSALE, "sugar8", LocalDate.now().plusDays(180),
+                        LocalDate.now().plusDays(240)));
                 return products;
         }
 }

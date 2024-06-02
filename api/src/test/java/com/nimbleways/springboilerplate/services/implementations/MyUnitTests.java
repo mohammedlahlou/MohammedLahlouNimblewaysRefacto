@@ -1,9 +1,9 @@
 package com.nimbleways.springboilerplate.services.implementations;
 
 import com.nimbleways.springboilerplate.entities.Product;
+import com.nimbleways.springboilerplate.entities.ProductType;
 import com.nimbleways.springboilerplate.repositories.ProductRepository;
 import com.nimbleways.springboilerplate.utils.Annotations.UnitTest;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,20 +19,27 @@ public class MyUnitTests {
 
     @Mock
     private NotificationService notificationService;
+
     @Mock
     private ProductRepository productRepository;
-    @InjectMocks 
+
+    @InjectMocks
     private ProductService productService;
 
     @Test
-    public void test() {
+    public void testHandleNormalProductWithZeroAvailability() {
         // GIVEN
-        Product product =new Product(null, 15, 0, "NORMAL", "RJ45 Cable", null, null, null);
+        Product product = new Product();
+        product.setId(1L);
+        product.setAvailable(0);
+        product.setLeadTime(15);
+        product.setType(ProductType.NORMAL);
+        product.setName("sugar");
 
         Mockito.when(productRepository.save(product)).thenReturn(product);
 
         // WHEN
-        productService.notifyDelay(product.getLeadTime(), product);
+        productService.handleNormalProduct(product);
 
         // THEN
         assertEquals(0, product.getAvailable());
